@@ -1,9 +1,0 @@
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "out",
-  "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_TINA_CLIENT_ID": "@next_public_tina_client_id",
-    "TINA_TOKEN": "@tina_token"
-  }
-}
