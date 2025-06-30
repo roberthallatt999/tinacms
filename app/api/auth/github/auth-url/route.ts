@@ -25,7 +25,7 @@ export async function GET() {
     
     // Store the state in cookies to verify when the user is redirected back
     const response = NextResponse.json({
-      url: `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${encodeURIComponent(
+      authUrl: `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${encodeURIComponent(
         redirectUri
       )}&scope=${encodeURIComponent(scope)}&state=${state}`,
     });

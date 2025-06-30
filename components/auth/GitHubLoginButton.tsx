@@ -9,7 +9,7 @@ interface GitHubLoginButtonProps {
 
 export default function GitHubLoginButton({ onLoginStart }: GitHubLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGitHubLogin = async () => {
     try {
