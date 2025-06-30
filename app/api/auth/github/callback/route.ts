@@ -79,9 +79,12 @@ export async function GET(request: NextRequest) {
     // Generate a token for Tina with user details
     const tinaToken = generateTinaToken(userData, primaryEmail);
     
-    // Create the response with redirection
-    // Direct to the admin dashboard rather than potentially loading a specific content file
-    const redirectUrl = '/admin/index.html'; // Explicit path to the admin dashboard
+    // Create the response with redirection directly to TinaCMS admin interface
+    // Use a URL that bypasses the middleware auth check to avoid double login
+    const redirectUrl = process.env.NODE_ENV === 'production'
+      ? '/admin'
+      : '/admin/index.html';
+      
     const response = NextResponse.redirect(new URL(redirectUrl, request.url));
     
     // Set the auth cookie
