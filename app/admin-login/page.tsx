@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LoginForm from '../../components/auth/LoginForm';
 import LoginHeader from '../../components/auth/LoginHeader';
 import { setTinaAuthToken } from '../../lib/tina-auth';
 
-export default function AdminLoginPage() {
+// Separate component to use searchParams within Suspense boundary
+function AdminLoginContent() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -82,5 +83,14 @@ export default function AdminLoginPage() {
         <p>Having trouble? Contact your administrator for assistance.</p>
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense boundary for useSearchParams
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <AdminLoginContent />
+    </Suspense>
   );
 }
