@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "tinacms dev -c \"next dev --turbopack\"",
+    "dev": "NODE_NO_WARNINGS=1 tinacms dev -c \"next dev --turbopack\"",
     "build": "tinacms build && next build",
     "build-local": "tinacms build --local --skip-indexing --skip-cloud-checks && next build",
     "start": "tinacms build && next start",
@@ -34,6 +34,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.0.0",
     "lucide-react": "^0.484.0",
     "mermaid": "^11.7.0",
     "motion": "^12.19.1",

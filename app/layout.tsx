@@ -4,6 +4,7 @@ import { Inter as FontSans, Lato, Nunito } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { VideoDialogProvider } from "@/components/ui/VideoDialogContext";
 import VideoDialog from "@/components/ui/VideoDialog";
+import AdminLoginStatusWrapper from "../components/auth/AdminLoginStatusWrapper";
 
 import "@/styles.css";
 import { TailwindIndicator } from "@/components/ui/breakpoint-indicator";
@@ -40,6 +41,7 @@ export default function RootLayout({
         <VideoDialogProvider>
           {children}
           <VideoDialog />
+          <AdminLoginStatusWrapper />
         </VideoDialogProvider>
         <TailwindIndicator />
       </body>
