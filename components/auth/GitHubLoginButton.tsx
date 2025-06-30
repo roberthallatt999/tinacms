@@ -9,30 +9,33 @@ interface GitHubLoginButtonProps {
 
 export default function GitHubLoginButton({ onLoginStart }: GitHubLoginButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleGitHubLogin = async () => {
     try {
       setIsLoading(true);
       if (onLoginStart) onLoginStart();
       
-      // Get the OAuth URL from our API
+      // Request GitHub auth URL from our API
       const response = await fetch('/api/auth/github/auth-url');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch auth URL: ${response.status} ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
-      if (data.url) {
-        // Store the current URL to redirect back after auth
-        if (typeof window !== 'undefined') {
-          const returnUrl = window.location.pathname;
-          localStorage.setItem('tinaAuthReturnUrl', returnUrl);
-        }
-        
-        // Redirect to GitHub for authentication
-        window.location.href = data.url;
+      if (data.authUrl) {
+        console.log('Redirecting to GitHub OAuth:', data.authUrl);
+        // Redirect to GitHub auth
+        window.location.href = data.authUrl;
       } else {
-        throw new Error('Failed to get GitHub authentication URL');
+        setError('Failed to get GitHub authorization URL');
       }
     } catch (error) {
+      setError('Error initiating GitHub login');
       console.error('GitHub login error:', error);
+    } finally {
       setIsLoading(false);
     }
   };

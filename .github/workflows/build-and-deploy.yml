@@ -1,8 +1,8 @@
-# Sample workflow for building and deploying a Next.js site to GitHub Pages
+# This workflow is DISABLED - not using GitHub Pages
+# 
+# Previously: Sample workflow for building and deploying a Next.js site to GitHub Pages
 #
-# To get started with Next.js see: https://nextjs.org/docs/getting-started
-#
-name: Deploy Next.js site to Pages
+name: DISABLED - GitHub Pages Workflow
 
 on:
   # Runs on pushes targeting the default branch
@@ -17,6 +17,8 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  # Add additional permission for repository management (needed for GitHub Pages setup)
+  repository-projects: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
