@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TinaCMS Auth Injection</title>
+  <script>
+    // This page will set up auth and then redirect to the actual admin interface
+    (function() {
+      // Get auth token from cookie or localStorage
+      const getAuthToken = () => {
+        // Try to get from localStorage first
+        const token = localStorage.getItem('tinaAuthToken');
+        if (token) return token;
+        
+        // Try to get from cookie
+        const cookieToken = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('tinaAuthToken='));
+        
+        return cookieToken ? cookieToken.split('=')[1] : null;
+      };
+      
+      const authToken = getAuthToken();
+      const clientId = localStorage.getItem('TINA_CLIENT_ID') || 
+                      window.NEXT_PUBLIC_TINA_CLIENT_ID;
+      
+      if (authToken) {
+        console.log('Auth token found, setting up TinaCMS auth');
+        
+        // Create TinaCMS auth object
+        const tinaAuthState = {
+          clientId: clientId || 'your-default-client-id',
+          token: authToken,
+          expiresAtInMs: Date.now() + 7 * 24 * 60 * 60 * 1000 // 1 week
+        };
+        
+        // Set the auth in localStorage where TinaCMS looks for it
+        localStorage.setItem('tinacms-auth', JSON.stringify(tinaAuthState));
+        
+        // Wait a moment and redirect to the actual admin
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 500);
+      } else {
+        console.log('No auth token found, redirecting to login');
+        window.location.href = '/admin-login';
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div style="display: flex; height: 100vh; align-items: center; justify-content: center; font-family: sans-serif; color: #333;">
+    <div style="text-align: center;">
+      <h1>Setting up TinaCMS admin...</h1>
+      <p>Please wait while we authenticate you...</p>
+    </div>
+  </div>
+</body>
+</html>
