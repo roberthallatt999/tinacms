@@ -23,9 +23,19 @@ function AuthSuccessContent() {
     try {
       // Set up TinaCMS expected auth in localStorage
       // This is the key part that connects your auth with TinaCMS
-      localStorage.setItem('tina.auth.token', token);
-      localStorage.setItem('tina.auth.clientId', clientId);
-      localStorage.setItem('tina.auth.expiresAt', String(Date.now() + 7 * 24 * 60 * 60 * 1000)); // 1 week
+      
+      // TinaCMS stores tokens in specific JSON format
+      const tinaAuthState = {
+        clientId,
+        token,
+        expiresAtInMs: Date.now() + 7 * 24 * 60 * 60 * 1000, // 1 week
+      };
+      
+      // Store auth state in the way TinaCMS expects
+      localStorage.setItem('tinacms-auth', JSON.stringify(tinaAuthState));
+      
+      // Also set our custom token for middleware
+      localStorage.setItem('tinaAuthToken', token);
       
       console.log('TinaCMS auth successfully set up');
       
