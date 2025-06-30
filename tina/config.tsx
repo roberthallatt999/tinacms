@@ -18,6 +18,43 @@ const config = defineConfig({
     process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF! || // Vercel branch env
     process.env.HEAD!, // Netlify branch env
   token: process.env.TINA_TOKEN!,
+  
+  // Custom auth provider to bypass TinaCMS Cloud login
+  authProvider: {
+    authenticate: async () => {
+      // Check for our custom auth token from localStorage
+      if (typeof window !== 'undefined') {
+        // If we already have Tina auth setup from our custom login, return it
+        const token = localStorage.getItem('tina.auth.token');
+        const clientId = localStorage.getItem('tina.auth.clientId');
+        
+        if (token && clientId) {
+          return {
+            status: 'success',
+            token,
+            user: {
+              name: 'Custom User',
+              email: 'user@example.com'
+            }
+          };
+        }
+      }
+      
+      // If not authenticated, redirect to our custom login page
+      window.location.href = '/admin-login';
+      return { status: 'error', error: 'Not authenticated' };
+    },
+    // The logout function should clear our custom auth and redirect to login
+    logout: async () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('tina.auth.token');
+        localStorage.removeItem('tina.auth.clientId');
+        localStorage.removeItem('tina.auth.expiresAt');
+        localStorage.removeItem('tinaAuthToken');
+        window.location.href = '/admin-login';
+      }
+    },
+  },
   // Note: TinaCMS will use NEXT_PUBLIC_APP_URL in production when properly configured
   // This is handled by environment variables rather than direct config
   media: {
