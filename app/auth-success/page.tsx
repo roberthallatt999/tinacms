@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function AuthSuccess() {
+// Component that uses searchParams safely wrapped in Suspense
+function AuthSuccessContent() {
   const [status, setStatus] = useState('Setting up authentication...');
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -81,5 +82,28 @@ export default function AuthSuccess() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function AuthSuccessLoading() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg">
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Authentication Status</h1>
+        <div className="animate-pulse">
+          <p className="text-gray-600">Preparing authentication...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function AuthSuccess() {
+  return (
+    <Suspense fallback={<AuthSuccessLoading />}>
+      <AuthSuccessContent />
+    </Suspense>
   );
 }
