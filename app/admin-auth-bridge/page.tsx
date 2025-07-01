@@ -443,7 +443,7 @@ export default function AdminAuthBridge() {
         `
         }}
         onLoad={handleScriptLoad}
-        onError={hanleScriptError}
+        onError={handleScriptError}
       ></Script>
       
       <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg">
