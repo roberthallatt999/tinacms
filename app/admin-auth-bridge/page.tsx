@@ -155,7 +155,8 @@ export default function AdminAuthBridge() {
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       {/* Load the proxy interceptor script */}
       <Script 
-        src="/admin/proxy-intercept.js" 
+        src={`${process.env.NODE_ENV === 'production' ? 
+          process.env.NEXT_PUBLIC_APP_URL || '' : ''}/admin/proxy-intercept.js`}
         onLoad={handleScriptLoad}
         onError={handleScriptError}
         strategy="beforeInteractive"
