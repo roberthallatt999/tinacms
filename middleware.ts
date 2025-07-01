@@ -1,33 +1,82 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// Define protected paths that require authentication
+const PROTECTED_PATHS = ['/admin', '/admin-auth-bridge'];
 
 export function middleware(request: NextRequest) {
-  // Get the pathname from the URL
-  const { pathname } = request.nextUrl;
+  const { pathname } = new URL(request.url);
   
-  // Skip middleware for admin-bridge and any admin paths with query parameters
-  // to prevent potential redirection loops
-  if (pathname === '/admin-bridge' || request.nextUrl.search.includes('auth_complete=true')) {
+  // Skip middleware for API routes and static assets
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/_next/') ||
+    pathname.includes('.') // Static files like .js, .css, etc.
+  ) {
     return NextResponse.next();
   }
+
+  // Check if this is a protected path
+  const isProtectedPath = PROTECTED_PATHS.some(path => 
+    pathname === path || pathname.startsWith(`${path}/`)
+  );
   
-  // Check if this is an admin route that needs protection
-  if (pathname.startsWith('/admin') && pathname !== '/admin-login') {
-    // Check for authentication token in cookies
-    const hasAuthToken = request.cookies.has('tinaAuthToken');
+  // Special handling for /admin path
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    // If user is authenticated, let them proceed but inject our script
+    const isAuthenticated = request.cookies.get('tinaAuthStatus') !== null;
     
-    if (!hasAuthToken) {
-      // Redirect to login page if no auth token is present
-      const loginUrl = new URL('/admin-login', request.url);
-      // Store the original URL to redirect back after login
-      loginUrl.searchParams.set('redirectTo', encodeURIComponent(pathname));
-      return NextResponse.redirect(loginUrl);
+    if (isAuthenticated) {
+      // For the root admin path, always redirect to admin-auth-bridge to ensure script injection
+      if (pathname === '/admin' || pathname === '/admin/index.html') {
+        // Avoid redirect loop by checking if coming from bridge
+        const fromBridge = new URL(request.url).searchParams.get('from') === 'bridge';
+        if (!fromBridge) {
+          return NextResponse.redirect(new URL('/admin-auth-bridge', request.url));
+        }
+        // If coming from bridge, add script injection via response headers
+        const response = NextResponse.next();
+        response.headers.set(
+          'Link', 
+          '</admin/proxy-intercept.js>; rel="preload"; as="script"'
+        );
+        return response;
+      }
+      
+      // For other admin paths, proceed normally with script injection
+      const response = NextResponse.next();
+      response.headers.set(
+        'Link', 
+        '</admin/proxy-intercept.js>; rel="preload"; as="script"'
+      );
+      return response;
+    } else {
+      // If not authenticated, redirect to login
+      return NextResponse.redirect(new URL('/admin-login', request.url));
+    }
+  }
+  
+  // Handle other protected paths
+  if (isProtectedPath) {
+    const isAuthenticated = request.cookies.get('tinaAuthStatus') !== null;
+    
+    if (!isAuthenticated && pathname !== '/admin-login') {
+      // Redirect to login if not authenticated
+      return NextResponse.redirect(new URL('/admin-login', request.url));
+    }
+  }
+  
+  // Special case for admin-bridge to avoid redirect loops
+  if (pathname === '/admin-auth-bridge') {
+    // If already authenticated, proceed
+    const isAuthenticated = request.cookies.get('tinaAuthStatus') !== null;
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL('/admin-login', request.url));
     }
     
-    // For authenticated users, continue without additional redirections
     return NextResponse.next();
   }
-  
-  // Continue with the request for non-admin routes
+
   return NextResponse.next();
 }
 
