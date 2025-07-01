@@ -106,7 +106,7 @@ export default function AdminAuthBridge() {
             if (!DEBUG) return;
             
             const timestamp = new Date().toISOString();
-            const logMessage = \[${timestamp}] ${message}\`;\`
+            const logMessage = \\\[${timestamp}] ${message}\`;
             
             // Add to logs array for later inspection
             if (data !== undefined) {
