@@ -157,8 +157,7 @@ export default function AdminAuthBridge() {
       <Script
         id="proxy-intercept-script"
         strategy="beforeInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
+        dangerouslySetInnerHTML={{ __html: `
           (function() {
             // Debug logging function - can be toggled for production
             const DEBUG = true;
@@ -506,7 +505,7 @@ export default function AdminAuthBridge() {
         }}
         onLoad={handleScriptLoad}
         onError={handleScriptError}
-      />
+        ></Script>
       
       {/* Previous src was:
       <Script 
