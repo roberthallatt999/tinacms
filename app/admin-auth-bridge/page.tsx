@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Script from 'next/script'
 
 /**
  * This page serves as a bridge between our custom authentication 
@@ -22,145 +21,87 @@ export default function AdminAuthBridge() {
   }
 
   useEffect(() => {
-    addDebug('AdminAuthBridge: Page loaded')
+    addDebug('Admin auth bridge loading')
     
-    // Add environment info for debugging
-    addDebug(`Environment: ${process.env.NODE_ENV}`)
-    addDebug(`Origin: ${window.location.origin}`)
-    addDebug(`Pathname: ${window.location.pathname}`)
-    
-    // Check for authentication status
-    const isAuthenticated = document.cookie
-      .split('; ')
-      .some(row => row.startsWith('tinaAuthStatus=authenticated'))
-    
-    addDebug(`Authentication status: ${isAuthenticated}`)
-    addDebug(`Cookie string: ${document.cookie.replace(/=([^;]+)/g, '=REDACTED')}`)
-
-    if (!isAuthenticated) {
-      // If not authenticated, redirect to login
-      addDebug('Not authenticated, redirecting to login')
-      router.replace('/admin-login')
-      return
-    }
-
-    // Load Tina auth from cookie and set in localStorage
-    addDebug('Setting up Tina auth')
-    setupTinaAuth()
-      .then((result) => {
-        addDebug(`Tina auth setup complete: ${JSON.stringify(result)}`)
+    // Check if we have a token in the cookies
+    const checkAuthStatus = async () => {
+      try {
+        // Fetch token from API 
+        const res = await fetch('/api/auth/get-tina-token')
         
-        // Verify localStorage content before redirect
-        const lsAuth = localStorage.getItem('tinacms-auth')
-        addDebug(`localStorage tinacms-auth exists: ${!!lsAuth}`)
-        if (lsAuth) {
-          try {
-            const parsed = JSON.parse(lsAuth)
-            addDebug(`Auth object has token: ${!!parsed.token}`)
-            addDebug(`Auth object has clientId: ${!!parsed.clientId}`)
-            addDebug(`Auth object has expiresAtInMs: ${!!parsed.expiresAtInMs}`)
-          } catch (e) {
-            addDebug(`Error parsing localStorage: ${e}`)
-          }
+        if (!res.ok) {
+          addDebug(`ERROR: Failed to get token: ${res.status} ${res.statusText}`)
+          return
         }
         
-        // Wait a bit longer in production for scripts to load
-        const timeout = process.env.NODE_ENV === 'production' ? 2000 : 1000
-        addDebug(`Waiting ${timeout}ms before redirect`)
+        const data = await res.json()
         
-        // Wait a short moment to ensure script loads
+        if (!data.token) {
+          addDebug('ERROR: No token returned from API')
+          return
+        }
+        
+        addDebug(`Token received from API: ${data.token.substring(0, 15)}...`)
+        
+        // Get client ID from environment
+        const clientId = process.env.NEXT_PUBLIC_TINA_CLIENT_ID
+        
+        if (!clientId) {
+          addDebug('ERROR: No client ID available')
+          return
+        }
+        
+        // Set up TinaCMS auth object
+        const authObject = {
+          token: data.token,
+          clientId: clientId,
+          expiresAtInMs: Date.now() + 7 * 24 * 60 * 60 * 1000 // 1 week
+        }
+        
+        // Store in localStorage for TinaCMS to use
+        localStorage.setItem('tinacms-auth', JSON.stringify(authObject))
+        sessionStorage.setItem('tinacms-auth', JSON.stringify(authObject))
+        
+        addDebug('TinaCMS auth set in localStorage and sessionStorage')
+        
+        // Redirect to TinaCMS admin after short delay
         setTimeout(() => {
-          // Redirect to actual admin page
-          addDebug('Redirecting to /admin')
-          try {
-            window.location.href = '/admin?from=bridge&time=' + Date.now()
-          } catch (err) {
-            addDebug(`Error during redirect: ${err}`)
-          }
-        }, timeout)
-      })
-      .catch(error => {
-        addDebug(`Error setting up Tina auth: ${error}`)
-        router.replace('/admin-login?error=auth_setup_failed')
-      })
-  }, [router])
-
-  // This function sets up the TinaCMS authentication in localStorage
-  async function setupTinaAuth() {
-    addDebug('setupTinaAuth: Starting')
-    try {
-      // Get client ID from meta tag or env
-      const clientId = process.env.NEXT_PUBLIC_TINA_CLIENT_ID || ''
-      addDebug(`Client ID available: ${!!clientId}`)
-      
-      // Get token from httpOnly cookie via a fetch to our API
-      addDebug('Fetching token from API')
-      const tokenResponse = await fetch('/api/auth/get-tina-token')
-      
-      addDebug(`Token response status: ${tokenResponse.status}`)
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text()
-        addDebug(`Error response: ${errorText}`)
-        throw new Error(`Failed to retrieve token: ${tokenResponse.status} ${errorText}`)
-      }
-      
-      const data = await tokenResponse.json()
-      const token = data.token
-      addDebug(`Token received: ${!!token}`)
-      
-      if (!token) {
-        throw new Error('No token available')
-      }
-      
-      // Format and set the TinaCMS auth object in localStorage
-      const authObject = {
-        token,
-        clientId,
-        expiresAtInMs: Date.now() + 7 * 24 * 60 * 60 * 1000 // 1 week
-      }
-      
-      // Set in both localStorage and sessionStorage for redundancy
-      addDebug('Setting auth in localStorage and sessionStorage')
-      localStorage.setItem('tinacms-auth', JSON.stringify(authObject))
-      sessionStorage.setItem('tinacms-auth', JSON.stringify(authObject))
-      
-      // Verify it was set correctly
-      const localStorageAuth = localStorage.getItem('tinacms-auth')
-      addDebug(`Verification - localStorage auth exists: ${!!localStorageAuth}`)
-      
-      return {
-        success: true,
-        hasAuth: !!localStorageAuth
-      }
-    } catch (error) {
-      addDebug(`Error in setupTinaAuth: ${error}`)
-      return {
-        success: false,
-        error: String(error)
+          addDebug('Redirecting to /admin...')
+          router.push('/admin')
+        }, 2000)
+      } catch (error) {
+        addDebug(`ERROR: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
-  }
-
-  // Script onLoad handler
-  const handleScriptLoad = () => {
-    addDebug('Proxy intercept script loaded')
-  }
-
-  // Script onError handler  
-  const handleScriptError = () => {
-    addDebug('ERROR: Failed to load proxy intercept script')
-  }
+    
+    checkAuthStatus()
+    
+    // Load the proxy interceptor script directly
+    const loadProxyScript = () => {
+      try {
+        // Create script element
+        const script = document.createElement('script');
+        script.src = `${window.location.origin}/admin/proxy-intercept-inline.js`;
+        script.async = true;
+        script.onload = () => addDebug('Proxy intercept script loaded successfully');
+        script.onerror = () => addDebug('ERROR: Failed to load proxy intercept script');
+        
+        // Append to head
+        document.head.appendChild(script);
+        
+        addDebug(`Loading proxy script from: ${script.src}`);
+      } catch (error) {
+        addDebug(`ERROR loading script: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    };
+    
+    // Execute after a short delay to ensure DOM is ready
+    setTimeout(loadProxyScript, 500);
+    
+  }, [router])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      {/* Load proxy interceptor from external file */}
-      <Script
-        id="proxy-intercept-script"
-        src={`${process.env.NEXT_PUBLIC_APP_URL || ''}/admin/proxy-intercept-inline.js`}
-        strategy="beforeInteractive"
-        onLoad={handleScriptLoad}
-        onError={handleScriptError}
-      />
       
       <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin Authentication</h1>
