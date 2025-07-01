@@ -3,10 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 export function middleware(request: NextRequest) {
   // Get the pathname from the URL
   const { pathname } = request.nextUrl;
+  
+  // Skip middleware for admin-bridge to prevent redirection loops
+  if (pathname === '/admin-bridge') {
+    return NextResponse.next();
+  }
 
   // Check if this is an admin route
   if (pathname.startsWith('/admin') && pathname !== '/admin-login') {
-    // Special handling for admin/index.html - redirect to our Next.js auth bridge
+    // Special handling for admin root and admin/index.html
     if (pathname === '/admin' || pathname === '/admin/index.html') {
       // Check for authentication token in cookies
       const hasAuthToken = request.cookies.has('tinaAuthToken');
@@ -19,7 +24,10 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
       } else {
         // If authenticated, redirect to our Next.js auth bridge
+        // Add a special query parameter to indicate this is from middleware
+        // to help prevent redirection loops
         const authBridgeUrl = new URL('/admin-bridge', request.url);
+        authBridgeUrl.searchParams.set('from', 'middleware');
         return NextResponse.redirect(authBridgeUrl);
       }
     } else {
