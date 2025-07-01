@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 
@@ -12,69 +12,101 @@ import Script from 'next/script'
  */
 export default function AdminAuthBridge() {
   const router = useRouter()
+  const [debugInfo, setDebugInfo] = useState<string[]>([])
+  const [showDebug, setShowDebug] = useState(true) // Set to false in production when fixed
+
+  // Add debug message with timestamp
+  const addDebug = (message: string) => {
+    console.log(`DEBUG: ${message}`)
+    setDebugInfo(prev => [...prev, `[${new Date().toISOString()}] ${message}`])
+  }
 
   useEffect(() => {
-    console.log('AdminAuthBridge: Page loaded')
+    addDebug('AdminAuthBridge: Page loaded')
+    
+    // Add environment info for debugging
+    addDebug(`Environment: ${process.env.NODE_ENV}`)
+    addDebug(`Origin: ${window.location.origin}`)
+    addDebug(`Pathname: ${window.location.pathname}`)
     
     // Check for authentication status
     const isAuthenticated = document.cookie
       .split('; ')
       .some(row => row.startsWith('tinaAuthStatus=authenticated'))
     
-    console.log('AdminAuthBridge: Authentication status:', isAuthenticated)
+    addDebug(`Authentication status: ${isAuthenticated}`)
+    addDebug(`Cookie string: ${document.cookie.replace(/=([^;]+)/g, '=REDACTED')}`)
 
     if (!isAuthenticated) {
       // If not authenticated, redirect to login
-      console.log('AdminAuthBridge: Not authenticated, redirecting to login')
+      addDebug('Not authenticated, redirecting to login')
       router.replace('/admin-login')
       return
     }
 
     // Load Tina auth from cookie and set in localStorage
-    console.log('AdminAuthBridge: Setting up Tina auth')
+    addDebug('Setting up Tina auth')
     setupTinaAuth()
       .then((result) => {
-        console.log('AdminAuthBridge: Tina auth setup complete', result)
+        addDebug(`Tina auth setup complete: ${JSON.stringify(result)}`)
+        
+        // Verify localStorage content before redirect
+        const lsAuth = localStorage.getItem('tinacms-auth')
+        addDebug(`localStorage tinacms-auth exists: ${!!lsAuth}`)
+        if (lsAuth) {
+          try {
+            const parsed = JSON.parse(lsAuth)
+            addDebug(`Auth object has token: ${!!parsed.token}`)
+            addDebug(`Auth object has clientId: ${!!parsed.clientId}`)
+            addDebug(`Auth object has expiresAtInMs: ${!!parsed.expiresAtInMs}`)
+          } catch (e) {
+            addDebug(`Error parsing localStorage: ${e}`)
+          }
+        }
+        
+        // Wait a bit longer in production for scripts to load
+        const timeout = process.env.NODE_ENV === 'production' ? 2000 : 1000
+        addDebug(`Waiting ${timeout}ms before redirect`)
+        
         // Wait a short moment to ensure script loads
         setTimeout(() => {
           // Redirect to actual admin page
-          console.log('AdminAuthBridge: Redirecting to /admin')
+          addDebug('Redirecting to /admin')
           try {
-            window.location.href = '/admin?from=bridge'
+            window.location.href = '/admin?from=bridge&time=' + Date.now()
           } catch (err) {
-            console.error('AdminAuthBridge: Error during redirect:', err)
+            addDebug(`Error during redirect: ${err}`)
           }
-        }, 1000) // Increased timeout for safety
+        }, timeout)
       })
       .catch(error => {
-        console.error('AdminAuthBridge: Error setting up Tina auth:', error)
+        addDebug(`Error setting up Tina auth: ${error}`)
         router.replace('/admin-login?error=auth_setup_failed')
       })
   }, [router])
 
   // This function sets up the TinaCMS authentication in localStorage
   async function setupTinaAuth() {
-    console.log('setupTinaAuth: Starting')
+    addDebug('setupTinaAuth: Starting')
     try {
       // Get client ID from meta tag or env
       const clientId = process.env.NEXT_PUBLIC_TINA_CLIENT_ID || ''
-      console.log('setupTinaAuth: Client ID available:', !!clientId)
+      addDebug(`Client ID available: ${!!clientId}`)
       
       // Get token from httpOnly cookie via a fetch to our API
-      console.log('setupTinaAuth: Fetching token from API')
+      addDebug('Fetching token from API')
       const tokenResponse = await fetch('/api/auth/get-tina-token')
       
-      console.log('setupTinaAuth: Token response status:', tokenResponse.status)
+      addDebug(`Token response status: ${tokenResponse.status}`)
       if (!tokenResponse.ok) {
-        console.error('setupTinaAuth: Failed to retrieve token, status:', tokenResponse.status)
         const errorText = await tokenResponse.text()
-        console.error('setupTinaAuth: Error response:', errorText)
+        addDebug(`Error response: ${errorText}`)
         throw new Error(`Failed to retrieve token: ${tokenResponse.status} ${errorText}`)
       }
       
       const data = await tokenResponse.json()
       const token = data.token
-      console.log('setupTinaAuth: Token received:', !!token)
+      addDebug(`Token received: ${!!token}`)
       
       if (!token) {
         throw new Error('No token available')
@@ -88,42 +120,75 @@ export default function AdminAuthBridge() {
       }
       
       // Set in both localStorage and sessionStorage for redundancy
-      console.log('setupTinaAuth: Setting auth in localStorage and sessionStorage')
+      addDebug('Setting auth in localStorage and sessionStorage')
       localStorage.setItem('tinacms-auth', JSON.stringify(authObject))
       sessionStorage.setItem('tinacms-auth', JSON.stringify(authObject))
       
       // Verify it was set correctly
       const localStorageAuth = localStorage.getItem('tinacms-auth')
-      console.log('setupTinaAuth: Verification - localStorage auth exists:', !!localStorageAuth)
+      addDebug(`Verification - localStorage auth exists: ${!!localStorageAuth}`)
       
-      return true
+      return {
+        success: true,
+        hasAuth: !!localStorageAuth
+      }
     } catch (error) {
-      console.error('setupTinaAuth: Error:', error)
-      throw error
+      addDebug(`Error in setupTinaAuth: ${error}`)
+      return {
+        success: false,
+        error: String(error)
+      }
     }
   }
 
-  return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh',
-      flexDirection: 'column',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <h1>Authenticating with TinaCMS...</h1>
-      <p>Please wait, you'll be redirected automatically.</p>
-      <p>If you are not redirected within a few seconds, <a href="/admin" style={{color: 'blue', textDecoration: 'underline'}}>click here</a>.</p>
+  // Script onLoad handler
+  const handleScriptLoad = () => {
+    addDebug('Proxy intercept script loaded')
+  }
 
-      {/* Load our proxy intercept script */}
+  // Script onError handler  
+  const handleScriptError = () => {
+    addDebug('ERROR: Failed to load proxy intercept script')
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-4">
+      {/* Load the proxy interceptor script */}
       <Script 
-        id="tina-proxy-intercept" 
         src="/admin/proxy-intercept.js" 
-        strategy="beforeInteractive" 
-        onLoad={() => console.log('Proxy intercept script loaded')}
-        onError={(e) => console.error('Error loading proxy script:', e)}
+        onLoad={handleScriptLoad}
+        onError={handleScriptError}
+        strategy="beforeInteractive"
       />
+      
+      <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg">
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin Authentication</h1>
+        <div className="animate-pulse">
+          <p className="text-gray-600">Configuring TinaCMS authentication...</p>
+        </div>
+        
+        {/* Debug info panel */}
+        {showDebug && (
+          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
+            <h2 className="text-lg font-semibold mb-2 flex justify-between">
+              Debug Info
+              <button 
+                onClick={() => navigator.clipboard.writeText(debugInfo.join('\n'))}
+                className="text-xs bg-blue-500 text-white px-2 py-1 rounded"
+              >
+                Copy
+              </button>
+            </h2>
+            <div className="text-xs font-mono overflow-auto max-h-64">
+              {debugInfo.map((msg, i) => (
+                <div key={i} className="py-1 border-b border-gray-200">
+                  {msg}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
