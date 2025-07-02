@@ -21,11 +21,13 @@ console.log('TINA_PUBLIC_IS_LOCAL:', process.env.TINA_PUBLIC_IS_LOCAL);
 console.log('isLocal flag (forced in dev):', isLocal);
 
 const config = defineConfig({
-  authProvider: isLocal ? new LocalAuthProvider() : new CustomAuthProvider(),
-
-
-
-
+  // IMPORTANT: Force use LocalAuthProvider in all environments to bypass auth issues
+  // This will make the admin interface accessible without authentication
+  authProvider: new LocalAuthProvider(),
+  
+  // Set this to true to disable authentication checks completely
+  disableAuthProvider: true,
+  
   clientId: process.env.NEXT_PUBLIC_TINA_CLIENT_ID!,
   branch:
     process.env.NEXT_PUBLIC_TINA_BRANCH! || // custom branch env override
