@@ -7,6 +7,17 @@ const PROTECTED_PATHS = ['/admin', '/admin-auth-bridge'];
 export function middleware(request: NextRequest) {
   const { pathname } = new URL(request.url);
   
+  // IMPORTANT: Check if we're in development or if TINA_PUBLIC_IS_LOCAL is true
+  // If so, bypass all authentication checks
+  const isDev = process.env.NODE_ENV !== 'production';
+  const isLocalTina = process.env.TINA_PUBLIC_IS_LOCAL === 'true';
+  
+  if (isDev || isLocalTina) {
+    // In development, bypass all auth checks
+    console.log('[Middleware] Bypassing auth checks in development mode');
+    return NextResponse.next();
+  }
+  
   // Skip middleware for API routes and static assets
   if (
     pathname.startsWith('/api/') ||
@@ -23,58 +34,47 @@ export function middleware(request: NextRequest) {
   
   // Special handling for /admin path
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    // If user is authenticated, let them proceed but inject our script
-    const isAuthenticated = request.cookies.get('tinaAuthStatus') !== null;
+    // Check for TinaCMS auth in either cookie or authStatus cookie
+    const hasTinaAuthToken = request.cookies.get('tinaAuthToken') !== undefined;
+    const hasTinaAuthStatus = request.cookies.get('tinaAuthStatus') !== undefined;
+    const isAuthenticated = hasTinaAuthToken || hasTinaAuthStatus;
     
     if (isAuthenticated) {
-      // For the root admin path, always redirect to admin-auth-bridge to ensure script injection
-      if (pathname === '/admin' || pathname === '/admin/index.html') {
-        // Avoid redirect loop by checking if coming from bridge
-        const fromBridge = new URL(request.url).searchParams.get('from') === 'bridge';
-        if (!fromBridge) {
-          return NextResponse.redirect(new URL('/admin-auth-bridge', request.url));
-        }
-        // If coming from bridge, add script injection via response headers
+      // For direct access to admin/index.html, don't redirect, just pass through
+      if (pathname === '/admin/index.html') {
         const response = NextResponse.next();
-        response.headers.set(
-          'Link', 
-          '</admin/proxy-intercept.js>; rel="preload"; as="script"'
-        );
+        // Add authorization header directly for TinaCMS API requests
+        const token = request.cookies.get('tinaAuthToken')?.value;
+        if (token) {
+          response.headers.set('X-TinaCMS-Token', token); // Custom header that our script can use
+        }
         return response;
       }
       
-      // For other admin paths, proceed normally with script injection
-      const response = NextResponse.next();
-      response.headers.set(
-        'Link', 
-        '</admin/proxy-intercept.js>; rel="preload"; as="script"'
-      );
-      return response;
+      // For the root admin path, always redirect to admin/index.html directly
+      if (pathname === '/admin') {
+        return NextResponse.redirect(new URL('/admin/index.html', request.url));
+      }
+      
+      // For other admin paths, proceed normally
+      return NextResponse.next();
     } else {
-      // If not authenticated, redirect to login
-      return NextResponse.redirect(new URL('/admin-login', request.url));
+      // If not authenticated, redirect to auth bridge
+      return NextResponse.redirect(new URL('/admin-auth-bridge', request.url));
     }
   }
   
   // Handle other protected paths
   if (isProtectedPath) {
-    const isAuthenticated = request.cookies.get('tinaAuthStatus') !== null;
+    // Check for TinaCMS auth in either cookie
+    const hasTinaAuthToken = request.cookies.get('tinaAuthToken') !== undefined;
+    const hasTinaAuthStatus = request.cookies.get('tinaAuthStatus') !== undefined;
+    const isAuthenticated = hasTinaAuthToken || hasTinaAuthStatus;
     
-    if (!isAuthenticated && pathname !== '/admin-login') {
-      // Redirect to login if not authenticated
-      return NextResponse.redirect(new URL('/admin-login', request.url));
+    if (!isAuthenticated && pathname !== '/admin-auth-bridge') {
+      // Redirect to auth bridge if not authenticated
+      return NextResponse.redirect(new URL('/admin-auth-bridge', request.url));
     }
-  }
-  
-  // Special case for admin-bridge to avoid redirect loops
-  if (pathname === '/admin-auth-bridge') {
-    // If already authenticated, proceed
-    const isAuthenticated = request.cookies.get('tinaAuthStatus') !== null;
-    if (!isAuthenticated) {
-      return NextResponse.redirect(new URL('/admin-login', request.url));
-    }
-    
-    return NextResponse.next();
   }
 
   return NextResponse.next();
