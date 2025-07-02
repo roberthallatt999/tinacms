@@ -1,5 +1,7 @@
 import { defineConfig } from "tinacms";
 import nextConfig from '../next.config'
+import { CustomAuthProvider } from './auth/CustomAuthProvider';
+import { LocalAuthProvider } from 'tinacms';
 
 import Post from "./collection/post";
 import Global from "./collection/global";
@@ -11,7 +13,19 @@ import Tag from "./collection/tag";
 const isProd = process.env.NODE_ENV === 'production';
 const siteUrl = isProd ? 'https://tinacms-psi.vercel.app' : 'http://localhost:3000';
 
+// Force local auth provider in development, use environment variable in production
+const isDev = process.env.NODE_ENV !== 'production';
+const isLocal = isDev || process.env.TINA_PUBLIC_IS_LOCAL === 'true';
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('TINA_PUBLIC_IS_LOCAL:', process.env.TINA_PUBLIC_IS_LOCAL);
+console.log('isLocal flag (forced in dev):', isLocal);
+
 const config = defineConfig({
+  authProvider: isLocal ? new LocalAuthProvider() : new CustomAuthProvider(),
+
+
+
+
   clientId: process.env.NEXT_PUBLIC_TINA_CLIENT_ID!,
   branch:
     process.env.NEXT_PUBLIC_TINA_BRANCH! || // custom branch env override

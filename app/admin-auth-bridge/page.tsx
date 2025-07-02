@@ -12,17 +12,23 @@ import Script from 'next/script'
  */
 export default function AdminAuthBridge() {
   const router = useRouter()
-  const [debugInfo, setDebugInfo] = useState<string[]>([])
-  const [showDebug, setShowDebug] = useState(true) // Set to false in production when fixed
-
-  // Add debug message with timestamp
+  
+  // Simplified debug logging that only works in development
   const addDebug = (message: string) => {
-    console.log(`DEBUG: ${message}`)
-    setDebugInfo(prev => [...prev, `[${new Date().toISOString()}] ${message}`])
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`DEBUG: ${message}`)
+    }
   }
 
   useEffect(() => {
-    addDebug('Admin auth bridge loading')
+    // Define environment variables for conditional logic
+    const isDev = process.env.NODE_ENV !== 'production'
+    const isLocal = process.env.NEXT_PUBLIC_TINA_PUBLIC_IS_LOCAL === 'true'
+    
+    // Only log details in development mode
+    if (isDev) {
+      addDebug('Admin auth bridge loading')
+    }
 
     // Check if we have a token in the cookies
     const checkAuthStatus = async () => {
@@ -31,18 +37,21 @@ export default function AdminAuthBridge() {
         const res = await fetch('/api/auth/get-tina-token')
 
         if (!res.ok) {
-          addDebug(`ERROR: Failed to get token: ${res.status} ${res.statusText}`)
+          addDebug(`Failed to authenticate: ${res.status} ${res.statusText}`)
           return
         }
 
         const data = await res.json()
 
         if (!data.token) {
-          addDebug('ERROR: No token returned from API')
+          addDebug('Authentication error: No token received')
           return
         }
-
-        addDebug(`Token received from API: ${data.token.substring(0, 15)}...`)
+        
+        // Only log token details in development mode
+        if (isDev) {
+          addDebug(`Authentication successful`)
+        }
 
         // Get client ID from environment
         const clientId = process.env.NEXT_PUBLIC_TINA_CLIENT_ID
@@ -63,20 +72,24 @@ export default function AdminAuthBridge() {
         localStorage.setItem('tinacms-auth', JSON.stringify(authObject))
         sessionStorage.setItem('tinacms-auth', JSON.stringify(authObject))
 
-        addDebug('TinaCMS auth set in localStorage and sessionStorage')
-
-        // Redirect to TinaCMS admin after short delay
-        setTimeout(() => {
-          addDebug('Redirecting to /admin...')
-          router.push('/admin')
-        }, 2000)
+        if (isDev) {
+          addDebug('Authentication data stored successfully')
+          addDebug('Redirecting to TinaCMS admin interface')
+        }
+        
+        // Use window.location for a hard redirect
+        // In production, use /admin path, in development use /admin/index.html directly
+        // This difference is because production builds might have different routing rules
+        const adminPath = process.env.NODE_ENV === 'production' ? '/admin' : '/admin/index.html'
+        addDebug(`Redirecting to ${adminPath}`)
+        window.location.href = adminPath
+        // Don't use router.push as it might be caught by TinaCMS's client-side routing
       } catch (error) {
         addDebug(`ERROR: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
 
     checkAuthStatus()
-
   }, [router])
 
   // Script onLoad handler
@@ -90,42 +103,29 @@ export default function AdminAuthBridge() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      {/* Embed proxy interceptor script directly */}
-      <Script
-        id="proxy-intercept-script"
-        strategy="beforeInteractive"
-        src="/scripts/proxy-intercept.js"
-        onLoad={handleScriptLoad}
-        onError={handleScriptError}
-      ></Script>
-      <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin Authentication</h1>
-        <div className="animate-pulse">
-          <p className="text-gray-600">Configuring TinaCMS authentication...</p>
+    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
+      {/* Conditionally embed proxy interceptor script */}
+      {process.env.NEXT_PUBLIC_TINA_PUBLIC_IS_LOCAL !== 'true' && (
+        <Script
+          id="proxy-intercept-script"
+          strategy="beforeInteractive"
+          src="/scripts/proxy-intercept.js"
+          onLoad={handleScriptLoad}
+          onError={handleScriptError}
+        ></Script>
+      )}
+      <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg border border-gray-100">
+        <div className="flex items-center justify-center mb-6">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 3.33331C10.8 3.33331 3.33337 10.8 3.33337 20C3.33337 29.2 10.8 36.6666 20 36.6666C29.2 36.6666 36.6667 29.2 36.6667 20C36.6667 10.8 29.2 3.33331 20 3.33331Z" fill="#2296F3"/>
+            <path d="M16.6666 28.3333L8.33331 20L10.6666 17.6667L16.6666 23.6667L29.3333 11L31.6666 13.3333L16.6666 28.3333Z" fill="white"/>
+          </svg>
         </div>
-
-        {/* Debug info panel */}
-        {showDebug && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h2 className="text-lg font-semibold mb-2 flex justify-between">
-              Debug Info
-              <button
-                onClick={() => navigator.clipboard.writeText(debugInfo.join('\n'))}
-                className="text-xs bg-blue-500 text-white px-2 py-1 rounded"
-              >
-                Copy
-              </button>
-            </h2>
-            <div className="text-xs font-mono overflow-auto max-h-64">
-              {debugInfo.map((msg, i) => (
-                <div key={i} className="py-1 border-b border-gray-200">
-                  {msg}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <h1 className="text-2xl font-semibold text-center text-gray-800 mb-4">Accessing TinaCMS Admin</h1>
+        <div className="flex items-center justify-center space-x-2">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+          <p className="text-gray-600">Authenticating...</p>
+        </div>
       </div>
     </div>
   )

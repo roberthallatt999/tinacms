@@ -245,6 +245,16 @@
   }
 
   // Try to bypass the TinaCMS login form
+  function setCookie(name, value, days) {
+    let expires = '';
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      expires = '; expires=' + date.toUTCString();
+    }
+    document.cookie = name + '=' + (value || '') + expires + '; path=/';
+  }
+
   function bypassTinaCMSLogin() {
     // This function will simulate a successful login with the token we've already set
     try {
@@ -328,8 +338,9 @@
 
       localStorage.setItem('tinacms-auth', JSON.stringify(authObject));
       sessionStorage.setItem('tinacms-auth', JSON.stringify(authObject));
+      setCookie('tinaAuthToken', token, 7); // Set cookie for 7 days
 
-      debug('TinaCMS auth object set in localStorage and sessionStorage');
+      debug('TinaCMS auth object and tinaAuthToken cookie set');
 
       // Force reload the page to apply the auth
       setTimeout(() => {

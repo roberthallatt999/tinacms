@@ -8,6 +8,15 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     // Get the TinaCMS auth token from the cookie - await the cookie store
+    const isLocal = process.env.TINA_PUBLIC_IS_LOCAL === 'true';
+
+    // If in local development, bypass the token check
+    if (isLocal) {
+      console.log('TINA_PUBLIC_IS_LOCAL is true, bypassing token check for /api/auth/get-tina-token');
+      return NextResponse.json({ token: 'local-tina-token' }); // Return a dummy token
+    }
+
+    // Get the TinaCMS auth token from the cookie - await the cookie store
     const cookieStore = await cookies();
     const tokenCookie = cookieStore.get('tinaAuthToken');
     const tinaAuthToken = tokenCookie?.value;
