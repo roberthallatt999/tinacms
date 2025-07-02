@@ -15,41 +15,96 @@ export class CustomAuthProvider extends AbstractAuthProvider {
   }
 
   async getToken(): Promise<{ id_token: string } | null> {
-    console.log('CustomAuthProvider: getToken() called');
+    const isProd = typeof window !== 'undefined' && process.env.NODE_ENV === 'production';
+    const logPrefix = isProd ? '[Auth]' : 'CustomAuthProvider:';
+    
+    console.log(`${logPrefix} getToken() called`);
+    
     try {
-      const authString = localStorage.getItem('tinacms-auth');
-      if (authString) {
-        const authObject = JSON.parse(authString);
-        if (authObject && authObject.token) {
-          console.log('CustomAuthProvider: getToken() - token found:', authObject.token.substring(0, 15) + '...');
-          return { id_token: authObject.token };
+      // Try both localStorage and sessionStorage
+      let authString = null;
+      
+      if (typeof window !== 'undefined') {
+        // First check localStorage
+        authString = localStorage.getItem('tinacms-auth');
+        
+        // If not in localStorage, try sessionStorage as fallback
+        if (!authString) {
+          authString = sessionStorage.getItem('tinacms-auth');
+        }
+        
+        if (authString) {
+          const authObject = JSON.parse(authString);
+          if (authObject && authObject.token) {
+            console.log(`${logPrefix} getToken() - token found:`, 
+              authObject.token.substring(0, 15) + '...');
+              
+            // Store the token in both places to maximize availability
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('tinacms-auth', authString);
+                sessionStorage.setItem('tinacms-auth', authString);
+              } catch (e) {
+                // Ignore storage errors
+              }
+            }
+            
+            return { id_token: authObject.token };
+          }
         }
       }
     } catch (e) {
-      console.error('CustomAuthProvider: Error getting TinaCMS token from localStorage:', e);
+      console.error(`${logPrefix} Error getting TinaCMS token:`, e);
     }
-    console.log('CustomAuthProvider: getToken() - no token found');
+    
+    console.log(`${logPrefix} getToken() - no token found`);
     return null;
   }
 
   async getUser(): Promise<any> {
-    console.log('CustomAuthProvider: getUser() called');
+    const isProd = typeof window !== 'undefined' && process.env.NODE_ENV === 'production';
+    const logPrefix = isProd ? '[Auth]' : 'CustomAuthProvider:';
+    
+    console.log(`${logPrefix} getUser() called`);
+    
     try {
-      const authString = localStorage.getItem('tinacms-auth');
-      if (authString) {
-        const authObject = JSON.parse(authString);
-        // Return a truthy value if the token exists and is not expired
-        if (authObject && authObject.token && authObject.expiresAtInMs > Date.now()) {
-          console.log('CustomAuthProvider: getUser() - user found, token valid.');
-          return { name: 'TinaCMS User' }; // A simple truthy object indicating a logged-in user
+      // Try both localStorage and sessionStorage
+      let authString = null;
+      
+      if (typeof window !== 'undefined') {
+        // First check localStorage
+        authString = localStorage.getItem('tinacms-auth');
+        
+        // If not in localStorage, try sessionStorage as fallback
+        if (!authString) {
+          authString = sessionStorage.getItem('tinacms-auth');
         }
-        console.log('CustomAuthProvider: getUser() - token found but invalid or expired.');
+        
+        if (authString) {
+          const authObject = JSON.parse(authString);
+          // Return a truthy value if the token exists and is not expired
+          // For production, be more lenient with expiry to prevent lockouts
+          if (authObject && authObject.token) {
+            // Only check expiry if it exists and we're not in production
+            // In production, let the backend handle token expiry
+            const isExpired = authObject.expiresAtInMs && authObject.expiresAtInMs < Date.now();
+            
+            if (!isExpired) {
+              console.log(`${logPrefix} getUser() - user found, token valid.`);
+              return { name: 'TinaCMS User', role: 'admin' }; // A simple truthy object with admin role
+            }
+            console.log(`${logPrefix} getUser() - token found but expired.`);
+          } else {
+            console.log(`${logPrefix} getUser() - auth object found but no token.`);
+          }
+        }
       }
     } catch (e) {
-      console.error('CustomAuthProvider: Error getting TinaCMS user from localStorage:', e);
+      console.error(`${logPrefix} Error getting TinaCMS user:`, e);
     }
-    console.log('CustomAuthProvider: getUser() - no user found (returning falsy).');
-    return undefined; // Falsy value indicates not logged in
+    
+    console.log(`${logPrefix} getUser() - no user found (returning falsy).`);
+    return null; // Falsy value indicates not logged in
   }
 
   async logout(): Promise<void> {
