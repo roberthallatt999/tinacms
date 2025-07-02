@@ -77,12 +77,20 @@ export default function AdminAuthBridge() {
           addDebug('Redirecting to TinaCMS admin interface')
         }
         
-        // Use window.location for a hard redirect
-        // In production, use /admin path, in development use /admin/index.html directly
-        // This difference is because production builds might have different routing rules
-        const adminPath = process.env.NODE_ENV === 'production' ? '/admin' : '/admin/index.html'
-        addDebug(`Redirecting to ${adminPath}`)
-        window.location.href = adminPath
+        // IMPORTANT: Always force redirect to /admin/index.html in all environments
+        // This bypasses any potential routing issues in production
+        const adminPath = '/admin/index.html';
+        
+        // Set a specific authorization header cookie that TinaCMS might be looking for
+        // This is in addition to localStorage and sessionStorage
+        document.cookie = `tinacms-auth=${encodeURIComponent(JSON.stringify(authObject))}; path=/; max-age=604800`;
+        
+        // Force a delay to ensure storage is set before redirect
+        addDebug(`Preparing redirect to ${adminPath} in 500ms...`);
+        setTimeout(() => {
+          addDebug(`Redirecting now to ${adminPath}`);
+          window.location.href = adminPath;
+        }, 500);
         // Don't use router.push as it might be caught by TinaCMS's client-side routing
       } catch (error) {
         addDebug(`ERROR: ${error instanceof Error ? error.message : String(error)}`)
