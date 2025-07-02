@@ -25,9 +25,6 @@ const config = defineConfig({
   // This will make the admin interface accessible without authentication
   authProvider: new LocalAuthProvider(),
   
-  // Set this to true to disable authentication checks completely
-  disableAuthProvider: true,
-  
   clientId: process.env.NEXT_PUBLIC_TINA_CLIENT_ID!,
   branch:
     process.env.NEXT_PUBLIC_TINA_BRANCH! || // custom branch env override
