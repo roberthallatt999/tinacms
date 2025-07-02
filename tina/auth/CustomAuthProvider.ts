@@ -6,11 +6,17 @@ export class CustomAuthProvider extends AbstractAuthProvider {
   }
 
   async authenticate(props?: {}): Promise<any> {
-    console.log('CustomAuthProvider: authenticate() called. Redirecting to /admin-auth-bridge');
-    // In our case, authentication is handled by the /admin-auth-bridge page
-    // If TinaCMS calls this, it means getUser() returned falsy.
-    // We should redirect to our auth bridge page.
-    window.location.href = '/admin-auth-bridge';
+    const isProd = typeof window !== 'undefined' && process.env.NODE_ENV === 'production';
+    const logPrefix = isProd ? '[Auth]' : 'CustomAuthProvider:';
+    
+    console.log(`${logPrefix} authenticate() called. Redirecting directly to /admin/index.html`);
+    
+    // Skip the auth bridge and go directly to the admin HTML file
+    // This approach works in development and might bypass redirect issues in production
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin/index.html';
+    }
+    
     return Promise.resolve();
   }
 
