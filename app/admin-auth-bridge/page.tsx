@@ -114,13 +114,24 @@ export default function AdminAuthBridge() {
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
       {/* Conditionally embed proxy interceptor script */}
       {process.env.NEXT_PUBLIC_TINA_PUBLIC_IS_LOCAL !== 'true' && (
-        <Script
-          id="proxy-intercept-script"
-          strategy="beforeInteractive"
-          src="/scripts/proxy-intercept.js"
-          onLoad={handleScriptLoad}
-          onError={handleScriptError}
-        ></Script>
+        <>
+          <Script
+            id="proxy-intercept-script"
+            strategy="beforeInteractive"
+            src="/scripts/proxy-intercept.js"
+            onLoad={handleScriptLoad}
+            onError={handleScriptError}
+          />
+          
+          {/* Always include the API interceptor script that adds authorization headers */}
+          <Script
+            id="tina-api-interceptor"
+            strategy="beforeInteractive"
+            src="/scripts/tina-api-interceptor.js"
+            onLoad={() => addDebug('Tina API interceptor script loaded')}
+            onError={() => addDebug('ERROR: Failed to load Tina API interceptor script')}
+          />
+        </>
       )}
       <div className="w-full max-w-md bg-white p-8 shadow-md rounded-lg border border-gray-100">
         <div className="flex items-center justify-center mb-6">
