@@ -8,12 +8,14 @@ import Page from "./collection/page";
 import Tag from "./collection/tag";
 
 const config = defineConfig({
-  clientId: process.env.NEXT_PUBLIC_TINA_CLIENT_ID!,
+  // Use local mode for development
+  local: process.env.TINA_PUBLIC_IS_LOCAL === "true",
+  clientId: process.env.NEXT_PUBLIC_TINA_CLIENT_ID || "",
   branch:
     process.env.NEXT_PUBLIC_TINA_BRANCH || // custom branch env override
     process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF || // Vercel branch env
-    process.env.HEAD || 'main', // default to 'main' if no env variables are set // Netlify branch env
-  token: process.env.TINA_TOKEN!,
+    process.env.HEAD || 'main', // default to 'main' if no env variables are set
+  token: process.env.TINA_TOKEN || "",
   media: {
     // If you wanted cloudinary do this
     // loadCustomStore: async () => {
