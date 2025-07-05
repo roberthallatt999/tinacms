@@ -25,6 +25,13 @@ const config = defineConfig({
   // Always use LocalAuthProvider for now as our CustomAuthProvider still has issues
   authProvider: new LocalAuthProvider(),
   
+  // IMPORTANT: Override the API URL to use our proxy
+  // This ensures all TinaCMS API calls go through our server-side proxy
+  // which automatically adds the Authorization header
+  apiURL: process.env.NEXT_PUBLIC_VERCEL_URL 
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/api/tina-proxy` 
+    : 'http://localhost:3000/api/tina-proxy',
+  
   clientId: process.env.NEXT_PUBLIC_TINA_CLIENT_ID!,
   branch:
     process.env.NEXT_PUBLIC_TINA_BRANCH! || // custom branch env override
