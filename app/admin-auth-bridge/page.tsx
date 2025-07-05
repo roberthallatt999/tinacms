@@ -113,6 +113,16 @@ export default function AdminAuthBridge() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-gray-50">
       {/* Conditionally embed proxy interceptor script */}
+      {/* Always include our auth hook script regardless of environment */}
+      <Script
+        id="tina-auth-hook"
+        strategy="beforeInteractive"
+        src="/scripts/tina-auth-hook.js"
+        onLoad={() => addDebug('Tina auth hook script loaded')}
+        onError={() => addDebug('ERROR: Failed to load Tina auth hook script')}
+      />
+      
+      {/* Legacy scripts - keep for compatibility */}
       {process.env.NEXT_PUBLIC_TINA_PUBLIC_IS_LOCAL !== 'true' && (
         <>
           <Script
@@ -123,7 +133,6 @@ export default function AdminAuthBridge() {
             onError={handleScriptError}
           />
           
-          {/* Always include the API interceptor script that adds authorization headers */}
           <Script
             id="tina-api-interceptor"
             strategy="beforeInteractive"
