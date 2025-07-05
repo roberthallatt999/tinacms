@@ -5,39 +5,24 @@ import { NextRequest, NextResponse } from 'next/server';
  * It automatically adds the authorization header to all requests
  * This solves the issue of missing auth headers in Vercel production
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleRequest(request, params.path, 'GET');
+export async function GET(request: NextRequest, context: { params: { path: string[] } }) {
+  return handleRequest(request, context.params.path, 'GET');
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleRequest(request, params.path, 'POST');
+export async function POST(request: NextRequest, context: { params: { path: string[] } }) {
+  return handleRequest(request, context.params.path, 'POST');
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleRequest(request, params.path, 'PUT');
+export async function PUT(request: NextRequest, context: { params: { path: string[] } }) {
+  return handleRequest(request, context.params.path, 'PUT');
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleRequest(request, params.path, 'DELETE');
+export async function DELETE(request: NextRequest, context: { params: { path: string[] } }) {
+  return handleRequest(request, context.params.path, 'DELETE');
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
-) {
-  return handleRequest(request, params.path, 'PATCH');
+export async function PATCH(request: NextRequest, context: { params: { path: string[] } }) {
+  return handleRequest(request, context.params.path, 'PATCH');
 }
 
 /**
